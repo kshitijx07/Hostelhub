@@ -1,0 +1,239 @@
+.navbar {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  padding: 12px 0;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  border-bottom: 2px solid rgba(75, 107, 251, 0.3);
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-logo {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.navbar-logo:hover {
+  transform: scale(1.05);
+}
+
+.logo-image {
+  height: 45px;
+  width: auto;
+  filter: drop-shadow(0 2px 8px rgba(75, 107, 251, 0.4));
+  transition: all 0.3s ease;
+}
+
+.navbar-logo:hover .logo-image {
+  filter: drop-shadow(0 4px 12px rgba(75, 107, 251, 0.6));
+}
+
+.logo-text {
+  color: #FFFFFF;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  transition: color 0.3s ease;
+}
+
+.navbar-logo:hover .logo-text {
+  color: #4B6BFB;
+}
+
+.navbar-menu {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 14px;
+  margin-right: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-icon {
+  font-size: 16px;
+  color: #4B6BFB;
+}
+
+/* Modern Button Styles */
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.nav-btn:hover::before {
+  left: 100%;
+}
+
+.nav-btn svg {
+  font-size: 16px;
+}
+
+/* Primary Button (Browse/Add) */
+.nav-btn-primary {
+  background: linear-gradient(135deg, #4B6BFB 0%, #3C54C9 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(75, 107, 251, 0.3);
+}
+
+.nav-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(75, 107, 251, 0.4);
+}
+
+/* Secondary Button (Applications) */
+.nav-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.nav-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #4B6BFB;
+  transform: translateY(-2px);
+}
+
+/* Outline Button (Login) */
+.nav-btn-outline {
+  background: transparent;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #4B6BFB;
+  color: #4B6BFB;
+  transform: translateY(-2px);
+}
+
+/* Solid Button (Sign Up) */
+.nav-btn-solid {
+  background: linear-gradient(135deg, #31C48D 0%, #28a574 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(49, 196, 141, 0.3);
+}
+
+.nav-btn-solid:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(49, 196, 141, 0.4);
+}
+
+/* Logout Button */
+.nav-btn-logout {
+  background: linear-gradient(135deg, #F05252 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(240, 82, 82, 0.3);
+}
+
+.nav-btn-logout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(240, 82, 82, 0.4);
+}
+
+/* Active state for all buttons */
+.nav-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive text */
+.nav-btn span {
+  white-space: nowrap;
+}
+
+/* Responsive Navbar */
+@media (max-width: 1024px) {
+  .navbar-container {
+    padding: 0 24px;
+  }
+
+  .nav-btn span {
+    display: none;
+  }
+
+  .nav-btn {
+    padding: 10px 12px;
+  }
+
+  .navbar-user span {
+    display: none;
+  }
+
+  .navbar-user {
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 16px;
+  }
+
+  .logo-text {
+    font-size: 20px;
+  }
+
+  .logo-image {
+    height: 35px;
+  }
+
+  .navbar-menu {
+    gap: 6px;
+  }
+
+  .nav-btn {
+    padding: 8px 10px;
+  }
+
+  .nav-btn svg {
+    font-size: 14px;
+  }
+}
