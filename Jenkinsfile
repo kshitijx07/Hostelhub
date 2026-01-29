@@ -1,92 +1,81 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    DOCKER_USERNAME = 'kshitij2511'
-    BACKEND_IMAGE   = 'hostelhub-backend'
-    FRONTEND_IMAGE  = 'hostelhub-frontend'
-    TAG             = "${BUILD_NUMBER}"
-  }
-
-  stages {
-
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    environment {
+        DOCKER_USERNAME = 'kshitij2511'
+        BACKEND_IMAGE = 'hostelhub-backend'
+        FRONTEND_IMAGE = 'hostelhub-frontend'
     }
 
-    stage('Backend: Install & Test') {
-      steps {
-        dir('backend') {
-          sh '''
-            npm install
-            npm test || echo "No tests defined"
-          '''
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-      }
-    }
 
-    stage('Backend: Docker Build & Push') {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-creds',
-          usernameVariable: 'DOCKER_USER',
-          passwordVariable: 'DOCKER_PASS'
-        )]) {
-          sh '''
-            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-
-            cd backend
-            docker build -t $DOCKER_USERNAME/$BACKEND_IMAGE:$TAG .
-            docker tag $DOCKER_USERNAME/$BACKEND_IMAGE:$TAG $DOCKER_USERNAME/$BACKEND_IMAGE:latest
-
-            docker push $DOCKER_USERNAME/$BACKEND_IMAGE:$TAG
-            docker push $DOCKER_USERNAME/$BACKEND_IMAGE:latest
-          '''
+        stage('Backend: Install & Test') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                }
+            }
+            steps {
+                dir('backend') {
+                    sh 'npm install'
+                    sh 'npm test || echo "No tests defined"'
+                }
+            }
         }
-      }
-    }
 
-    stage('Frontend: Build') {
-      steps {
-        dir('fronted') {
-          sh '''
-            npm install
-            npm run build
-          '''
+        stage('Backend: Docker Build & Push') {
+            steps {
+                dir('backend') {
+                    sh """
+                        docker build -t $DOCKER_USERNAME/$BACKEND_IMAGE:${BUILD_NUMBER} .
+                        docker tag $DOCKER_USERNAME/$BACKEND_IMAGE:${BUILD_NUMBER} $DOCKER_USERNAME/$BACKEND_IMAGE:latest
+                        docker push $DOCKER_USERNAME/$BACKEND_IMAGE:${BUILD_NUMBER}
+                        docker push $DOCKER_USERNAME/$BACKEND_IMAGE:latest
+                    """
+                }
+            }
         }
-      }
-    }
 
-    stage('Frontend: Docker Build & Push') {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'dockerhub-creds',
-          usernameVariable: 'DOCKER_USER',
-          passwordVariable: 'DOCKER_PASS'
-        )]) {
-          sh '''
-            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-
-            cd fronted
-            docker build -t $DOCKER_USERNAME/$FRONTEND_IMAGE:$TAG .
-            docker tag $DOCKER_USERNAME/$FRONTEND_IMAGE:$TAG $DOCKER_USERNAME/$FRONTEND_IMAGE:latest
-
-            docker push $DOCKER_USERNAME/$FRONTEND_IMAGE:$TAG
-            docker push $DOCKER_USERNAME/$FRONTEND_IMAGE:latest
-          '''
+        stage('Frontend: Build') {
+            agent {
+                docker {
+                    image 'node:20-alpine'
+                }
+            }
+            steps {
+                dir('fronted') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
         }
-      }
-    }
-  }
 
-  post {
-    success {
-      echo "✅ Pipeline completed successfully!"
+        stage('Frontend: Docker Build & Push') {
+            steps {
+                dir('fronted') {
+                    sh """
+                        docker build -t $DOCKER_USERNAME/$FRONTEND_IMAGE:${BUILD_NUMBER} .
+                        docker tag $DOCKER_USERNAME/$FRONTEND_IMAGE:${BUILD_NUMBER} $DOCKER_USERNAME/$FRONTEND_IMAGE:latest
+                        docker push $DOCKER_USERNAME/$FRONTEND_IMAGE:${BUILD_NUMBER}
+                        docker push $DOCKER_USERNAME/$FRONTEND_IMAGE:latest
+                    """
+                }
+            }
+        }
     }
-    failure {
-      echo "❌ Pipeline failed. Check logs."
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs.'
+        }
     }
-  }
 }
