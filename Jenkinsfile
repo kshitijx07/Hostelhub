@@ -33,7 +33,7 @@ pipeline {
             steps {
                 dir('backend') {
                     sh '''
-                      docker build --network=host -t kshitij2511/hostelhub-backend:${BUILD_NUMBER} .'
+                      docker build --network=host -t kshitij2511/hostelhub-backend:${BUILD_NUMBER} .
                       docker build -t $DOCKERHUB_USER/$BACKEND_IMAGE:${BUILD_NUMBER} .
                       docker tag  $DOCKERHUB_USER/$BACKEND_IMAGE:${BUILD_NUMBER} $DOCKERHUB_USER/$BACKEND_IMAGE:latest
                       docker push $DOCKERHUB_USER/$BACKEND_IMAGE:${BUILD_NUMBER}
