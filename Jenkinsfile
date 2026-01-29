@@ -47,6 +47,7 @@ pipeline {
             steps {
                 dir('fronted') {
                     sh '''
+                    docker build --network=host -t kshitij2511/hostelhub-frontend:${BUILD_NUMBER} .
                       docker build -t $DOCKERHUB_USER/$FRONTEND_IMAGE:${BUILD_NUMBER} .
                       docker tag  $DOCKERHUB_USER/$FRONTEND_IMAGE:${BUILD_NUMBER} $DOCKERHUB_USER/$FRONTEND_IMAGE:latest
                       docker push $DOCKERHUB_USER/$FRONTEND_IMAGE:${BUILD_NUMBER}
