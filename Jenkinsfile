@@ -1,3 +1,5 @@
+@Library('hostelhub-lib') _
+
 pipeline {
     agent any
 
@@ -22,38 +24,30 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh '''
-                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                 }
             }
         }
 
         stage('Build & Push Backend') {
             steps {
-                dir('backend') {
-                    sh '''
-                      docker build --network=host -t kshitij2511/hostelhub-backend:${BUILD_NUMBER} .
-                      docker build -t $DOCKERHUB_USER/$BACKEND_IMAGE:${BUILD_NUMBER} .
-                      docker tag  $DOCKERHUB_USER/$BACKEND_IMAGE:${BUILD_NUMBER} $DOCKERHUB_USER/$BACKEND_IMAGE:latest
-                      docker push $DOCKERHUB_USER/$BACKEND_IMAGE:${BUILD_NUMBER}
-                      docker push $DOCKERHUB_USER/$BACKEND_IMAGE:latest
-                    '''
-                }
+                dockerBuildPush(
+                    user: DOCKERHUB_USER,
+                    image: BACKEND_IMAGE,
+                    tag: BUILD_NUMBER,
+                    dir: 'backend'
+                )
             }
         }
 
         stage('Build & Push Frontend') {
             steps {
-                dir('fronted') {
-                    sh '''
-                    docker build --network=host -t kshitij2511/hostelhub-frontend:${BUILD_NUMBER} .
-                      docker build -t $DOCKERHUB_USER/$FRONTEND_IMAGE:${BUILD_NUMBER} .
-                      docker tag  $DOCKERHUB_USER/$FRONTEND_IMAGE:${BUILD_NUMBER} $DOCKERHUB_USER/$FRONTEND_IMAGE:latest
-                      docker push $DOCKERHUB_USER/$FRONTEND_IMAGE:${BUILD_NUMBER}
-                      docker push $DOCKERHUB_USER/$FRONTEND_IMAGE:latest
-                    '''
-                }
+                dockerBuildPush(
+                    user: DOCKERHUB_USER,
+                    image: FRONTEND_IMAGE,
+                    tag: BUILD_NUMBER,
+                    dir: 'fronted'
+                )
             }
         }
     }
