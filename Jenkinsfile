@@ -35,14 +35,14 @@ pipeline {
             }
             steps {
                 script {
-                    def BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
-                    def FRONTEND_VERSION = bumpNpmVersion(dir: 'fronted')
+                    def backendVersion  = bumpNpmVersion(dir: 'backend')
+                    def frontendVersion = bumpNpmVersion(dir: 'fronted')
 
-                    env.BACKEND_VERSION  = BACKEND_VERSION
-                    env.FRONTEND_VERSION = FRONTEND_VERSION
+                    env.BACKEND_VERSION  = backendVersion
+                    env.FRONTEND_VERSION = frontendVersion
 
-                    echo "Backend Version  : ${BACKEND_VERSION}"
-                    echo "Frontend Version : ${FRONTEND_VERSION}"
+                    echo "Backend Version  : ${backendVersion}"
+                    echo "Frontend Version : ${frontendVersion}"
                 }
             }
         }
@@ -72,7 +72,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Images built with auto versioning + build context"
+            echo "✅ Docker images built & pushed with auto versioning"
         }
         failure {
             echo "❌ Pipeline failed"
