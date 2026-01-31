@@ -30,6 +30,12 @@ pipeline {
         }
 
         stage('Versioning') {
+            agent {
+                docker {
+                    image 'node:22'
+                    args '-u root'
+                }
+            }
             steps {
                 script {
                     BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
