@@ -31,15 +31,15 @@ pipeline {
 
         stage('Versioning') {
             agent {
-                docker {
-                    image 'node:22'
-                    args '-u root'
-                }
+                docker { image 'node:22' }
             }
             steps {
                 script {
-                    BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
-                    FRONTEND_VERSION = bumpNpmVersion(dir: 'fronted')
+                    def BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
+                    def FRONTEND_VERSION = bumpNpmVersion(dir: 'fronted')
+
+                    env.BACKEND_VERSION  = BACKEND_VERSION
+                    env.FRONTEND_VERSION = FRONTEND_VERSION
 
                     echo "Backend Version  : ${BACKEND_VERSION}"
                     echo "Frontend Version : ${FRONTEND_VERSION}"
@@ -52,7 +52,7 @@ pipeline {
                 dockerBuildPush(
                     user: DOCKERHUB_USER,
                     image: BACKEND_IMAGE,
-                    version: BACKEND_VERSION,
+                    version: env.BACKEND_VERSION,
                     dir: 'backend'
                 )
             }
@@ -63,7 +63,7 @@ pipeline {
                 dockerBuildPush(
                     user: DOCKERHUB_USER,
                     image: FRONTEND_IMAGE,
-                    version: FRONTEND_VERSION,
+                    version: env.FRONTEND_VERSION,
                     dir: 'fronted'
                 )
             }
@@ -72,7 +72,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Images built with auto versioning"
+            echo "✅ Images built with auto versioning + build context"
         }
         failure {
             echo "❌ Pipeline failed"
