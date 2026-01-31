@@ -35,14 +35,11 @@ pipeline {
             }
             steps {
                 script {
-                    def backendVersion  = bumpNpmVersion(dir: 'backend')
-                    def frontendVersion = bumpNpmVersion(dir: 'fronted')
+                    env.BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
+                    env.FRONTEND_VERSION = bumpNpmVersion(dir: 'fronted')
 
-                    env.BACKEND_VERSION  = backendVersion
-                    env.FRONTEND_VERSION = frontendVersion
-
-                    echo "Backend Version  : ${backendVersion}"
-                    echo "Frontend Version : ${frontendVersion}"
+                    echo "Backend Version  : ${env.BACKEND_VERSION}"
+                    echo "Frontend Version : ${env.FRONTEND_VERSION}"
                 }
             }
         }
