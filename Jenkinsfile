@@ -29,12 +29,24 @@ pipeline {
             }
         }
 
+        stage('Versioning') {
+            steps {
+                script {
+                    BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
+                    FRONTEND_VERSION = bumpNpmVersion(dir: 'fronted')
+
+                    echo "Backend Version  : ${BACKEND_VERSION}"
+                    echo "Frontend Version : ${FRONTEND_VERSION}"
+                }
+            }
+        }
+
         stage('Build & Push Backend') {
             steps {
                 dockerBuildPush(
                     user: DOCKERHUB_USER,
                     image: BACKEND_IMAGE,
-                    tag: BUILD_NUMBER,
+                    version: BACKEND_VERSION,
                     dir: 'backend'
                 )
             }
@@ -45,7 +57,7 @@ pipeline {
                 dockerBuildPush(
                     user: DOCKERHUB_USER,
                     image: FRONTEND_IMAGE,
-                    tag: BUILD_NUMBER,
+                    version: FRONTEND_VERSION,
                     dir: 'fronted'
                 )
             }
@@ -54,10 +66,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline completed successfully'
+            echo "✅ Images built with auto versioning"
         }
         failure {
-            echo '❌ Pipeline failed'
+            echo "❌ Pipeline failed"
         }
     }
 }
