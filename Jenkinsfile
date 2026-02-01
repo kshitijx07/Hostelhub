@@ -7,12 +7,6 @@ pipeline {
         disableConcurrentBuilds()
     }
 
-    environment {
-        DOCKER_USER = 'kshitij2511'
-        GIT_BRANCH  = 'main'
-        SKIP_PIPELINE = 'false'
-    }
-
     stages {
 
         stage('Checkout') {
@@ -21,7 +15,7 @@ pipeline {
             }
         }
 
-        stage('Prevent CI Loop') {
+        stage('Guard: Prevent CI Loop') {
             steps {
                 script {
                     def author = sh(
@@ -29,20 +23,25 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    echo "Last commit author: ${author}"
+                    def message = sh(
+                        script: "git log -1 --pretty=%B",
+                        returnStdout: true
+                    ).trim()
 
-                    if (author == 'jenkins-ci') {
-                        echo '🔁 Jenkins-triggered commit detected — skipping remaining stages'
-                        env.SKIP_PIPELINE = 'true'
+                    echo "Commit author  : ${author}"
+                    echo "Commit message : ${message}"
+
+                    if (author == 'jenkins-ci' || message.contains('[skip ci]')) {
+                        echo '🛑 CI guard triggered — aborting pipeline to prevent loop'
+                        currentBuild.description = 'Skipped (CI self-trigger)'
+                        currentBuild.result = 'NOT_BUILT'
+                        error('Stopping pipeline execution')
                     }
                 }
             }
         }
 
         stage('Docker Login') {
-            when {
-                expression { env.SKIP_PIPELINE != 'true' }
-            }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -59,40 +58,29 @@ pipeline {
         }
 
         stage('Versioning') {
-            when {
-                expression { env.SKIP_PIPELINE != 'true' }
-            }
             steps {
+                sh '''
+                    set -e
+
+                    cd backend
+                    npm version patch --no-git-tag-version
+                    node -p "require('./package.json').version" > ../backend.version
+                    cd ..
+
+                    cd fronted
+                    npm version patch --no-git-tag-version
+                    node -p "require('./package.json').version" > ../frontend.version
+                    cd ..
+                '''
+
                 script {
-                    sh '''
-                        set -e
-
-                        echo "📦 Bumping backend version"
-                        cd backend
-                        npm version patch --no-git-tag-version
-                        node -p "require('./package.json').version" > ../backend.version
-                        cd ..
-
-                        echo "📦 Bumping frontend version"
-                        cd fronted
-                        npm version patch --no-git-tag-version
-                        node -p "require('./package.json').version" > ../frontend.version
-                        cd ..
-                    '''
-
                     env.BACKEND_VERSION  = readFile('backend.version').trim()
                     env.FRONTEND_VERSION = readFile('frontend.version').trim()
-
-                    echo "Backend Version  : v${env.BACKEND_VERSION}"
-                    echo "Frontend Version : v${env.FRONTEND_VERSION}"
                 }
             }
         }
 
         stage('Commit Version Updates') {
-            when {
-                expression { env.SKIP_PIPELINE != 'true' }
-            }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -102,15 +90,13 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        set -e
-
                         git config user.name "jenkins-ci"
                         git config user.email "jenkins@ci.local"
 
-                        git add backend/package.json backend/package-lock.json || true
-                        git add fronted/package.json fronted/package-lock.json || true
+                        git add backend/package.json backend/package-lock.json
+                        git add fronted/package.json fronted/package-lock.json
 
-                        git diff --cached --quiet && echo "No version changes to commit" && exit 0
+                        git diff --cached --quiet && exit 0
 
                         git commit -m "chore(ci): bump versions [skip ci]"
                         git push https://$GIT_USER:$GIT_PASS@github.com/kshitijx07/Hostelhub.git HEAD:main
@@ -120,12 +106,9 @@ pipeline {
         }
 
         stage('Build & Push Backend') {
-            when {
-                expression { env.SKIP_PIPELINE != 'true' }
-            }
             steps {
                 dockerBuildPush(
-                    user: env.DOCKER_USER,
+                    user: 'kshitij2511',
                     image: 'hostelhub-backend',
                     version: "v${env.BACKEND_VERSION}",
                     dir: 'backend'
@@ -134,12 +117,9 @@ pipeline {
         }
 
         stage('Build & Push Frontend') {
-            when {
-                expression { env.SKIP_PIPELINE != 'true' }
-            }
             steps {
                 dockerBuildPush(
-                    user: env.DOCKER_USER,
+                    user: 'kshitij2511',
                     image: 'hostelhub-frontend',
                     version: "v${env.FRONTEND_VERSION}",
                     dir: 'fronted'
@@ -151,6 +131,9 @@ pipeline {
     post {
         success {
             echo '✅ Pipeline completed successfully'
+        }
+        aborted {
+            echo '⏭️ Pipeline aborted (CI loop prevention)'
         }
         failure {
             echo '❌ Pipeline failed'
