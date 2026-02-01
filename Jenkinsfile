@@ -18,9 +18,15 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-creds', variable: 'DOCKER_PASS')]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u kshitij2511 --password-stdin
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
             }
@@ -36,14 +42,14 @@ pipeline {
                         cd backend
                         npm version patch --no-git-tag-version
                         BACKEND_VERSION=$(node -p "require('./package.json').version")
-                        echo "BACKEND_VERSION=$BACKEND_VERSION" > ../backend.version
+                        echo "$BACKEND_VERSION" > ../backend.version
                         cd ..
 
                         echo "📦 Bumping frontend version"
                         cd fronted
                         npm version patch --no-git-tag-version
                         FRONTEND_VERSION=$(node -p "require('./package.json').version")
-                        echo "FRONTEND_VERSION=$FRONTEND_VERSION" > ../frontend.version
+                        echo "$FRONTEND_VERSION" > ../frontend.version
                         cd ..
                     '''
 
@@ -58,11 +64,13 @@ pipeline {
 
         stage('Commit Version Updates') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-cred',
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_PASS'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-cred',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                    )
+                ]) {
                     sh '''
                         set -e
 
@@ -75,7 +83,6 @@ pipeline {
                         git diff --cached --quiet && echo "No version changes to commit" && exit 0
 
                         git commit -m "chore(ci): bump versions [skip ci]"
-
                         git push https://$GIT_USER:$GIT_PASS@github.com/kshitijx07/Hostelhub.git HEAD:main
                     '''
                 }
