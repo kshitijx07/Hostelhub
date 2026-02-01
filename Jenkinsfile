@@ -18,16 +18,9 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github-cred',
-                        usernameVariable: 'DOCKER_USER_NAME',
-                        passwordVariable: 'DOCKER_PASSWORD'
-                    )
-                ]) {
+                withCredentials([string(credentialsId: 'dockerhub-creds', variable: 'DOCKER_PASS')]) {
                     sh '''
-                        echo "🔐 Logging into Docker Hub"
-                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER_NAME" --password-stdin
+                        echo "$DOCKER_PASS" | docker login -u kshitij2511 --password-stdin
                     '''
                 }
             }
@@ -42,34 +35,34 @@ pipeline {
                         echo "📦 Bumping backend version"
                         cd backend
                         npm version patch --no-git-tag-version
-                        node -p "require('./package.json').version" > ../backend.version
+                        BACKEND_VERSION=$(node -p "require('./package.json').version")
+                        echo "BACKEND_VERSION=$BACKEND_VERSION" > ../backend.version
                         cd ..
 
                         echo "📦 Bumping frontend version"
                         cd fronted
                         npm version patch --no-git-tag-version
-                        node -p "require('./package.json').version" > ../frontend.version
+                        FRONTEND_VERSION=$(node -p "require('./package.json').version")
+                        echo "FRONTEND_VERSION=$FRONTEND_VERSION" > ../frontend.version
                         cd ..
                     '''
 
                     env.BACKEND_VERSION  = readFile('backend.version').trim()
                     env.FRONTEND_VERSION = readFile('frontend.version').trim()
 
-                    echo "✅ Backend Version  : v${env.BACKEND_VERSION}"
-                    echo "✅ Frontend Version : v${env.FRONTEND_VERSION}"
+                    echo "Backend Version  : v${env.BACKEND_VERSION}"
+                    echo "Frontend Version : v${env.FRONTEND_VERSION}"
                 }
             }
         }
 
         stage('Commit Version Updates') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github-cred',
-                        usernameVariable: 'GIT_USER',
-                        passwordVariable: 'GIT_PASS'
-                    )
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-cred',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
                     sh '''
                         set -e
 
@@ -79,7 +72,7 @@ pipeline {
                         git add backend/package.json backend/package-lock.json || true
                         git add fronted/package.json fronted/package-lock.json || true
 
-                        git diff --cached --quiet && echo "ℹ️ No version changes to commit" && exit 0
+                        git diff --cached --quiet && echo "No version changes to commit" && exit 0
 
                         git commit -m "chore(ci): bump versions [skip ci]"
 
@@ -114,7 +107,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Versions committed & Docker images pushed successfully'
+            echo '✅ Docker images built, pushed, and versions committed safely'
         }
         failure {
             echo '❌ Pipeline failed'
