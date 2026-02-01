@@ -4,9 +4,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = 'kshitij2511'
-        BACKEND_IMAGE  = 'hostelhub-backend'
-        FRONTEND_IMAGE = 'hostelhub-frontend'
+        DOCKERHUB_USER  = 'kshitij2511'
+        BACKEND_IMAGE   = 'hostelhub-backend'
+        FRONTEND_IMAGE  = 'hostelhub-frontend'
     }
 
     stages {
@@ -19,20 +19,19 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                 }
             }
         }
 
         stage('Versioning') {
-            agent {
-                docker { image 'node:22' }
-            }
             steps {
                 script {
                     env.BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
