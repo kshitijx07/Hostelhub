@@ -8,7 +8,7 @@ const LandingPage = () => {
     <div className="landing-page">
       <header className="hero-section">
         <div className="hero-content">
-          <h1>Find Your Perfect Stay</h1>
+          <h1>Help You to Find Your Perfect Stay</h1>
           <p>Discover a wide range of hostels and make your booking seamless.</p>
           <div className="hero-buttons">
             <Link to="/student/login" className="btn btn-primary">Student Login</Link>
