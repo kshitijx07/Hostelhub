@@ -3,9 +3,14 @@
 pipeline {
     agent any
 
+    options {
+        disableConcurrentBuilds()
+    }
+
     environment {
         DOCKER_USER = 'kshitij2511'
         GIT_BRANCH  = 'main'
+        SKIP_PIPELINE = 'false'
     }
 
     stages {
@@ -16,7 +21,28 @@ pipeline {
             }
         }
 
+        stage('Prevent CI Loop') {
+            steps {
+                script {
+                    def author = sh(
+                        script: "git log -1 --pretty=%an",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Last commit author: ${author}"
+
+                    if (author == 'jenkins-ci') {
+                        echo '🔁 Jenkins-triggered commit detected — skipping remaining stages'
+                        env.SKIP_PIPELINE = 'true'
+                    }
+                }
+            }
+        }
+
         stage('Docker Login') {
+            when {
+                expression { env.SKIP_PIPELINE != 'true' }
+            }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -33,6 +59,9 @@ pipeline {
         }
 
         stage('Versioning') {
+            when {
+                expression { env.SKIP_PIPELINE != 'true' }
+            }
             steps {
                 script {
                     sh '''
@@ -41,15 +70,13 @@ pipeline {
                         echo "📦 Bumping backend version"
                         cd backend
                         npm version patch --no-git-tag-version
-                        BACKEND_VERSION=$(node -p "require('./package.json').version")
-                        echo "$BACKEND_VERSION" > ../backend.version
+                        node -p "require('./package.json').version" > ../backend.version
                         cd ..
 
                         echo "📦 Bumping frontend version"
                         cd fronted
                         npm version patch --no-git-tag-version
-                        FRONTEND_VERSION=$(node -p "require('./package.json').version")
-                        echo "$FRONTEND_VERSION" > ../frontend.version
+                        node -p "require('./package.json').version" > ../frontend.version
                         cd ..
                     '''
 
@@ -63,6 +90,9 @@ pipeline {
         }
 
         stage('Commit Version Updates') {
+            when {
+                expression { env.SKIP_PIPELINE != 'true' }
+            }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -90,6 +120,9 @@ pipeline {
         }
 
         stage('Build & Push Backend') {
+            when {
+                expression { env.SKIP_PIPELINE != 'true' }
+            }
             steps {
                 dockerBuildPush(
                     user: env.DOCKER_USER,
@@ -101,6 +134,9 @@ pipeline {
         }
 
         stage('Build & Push Frontend') {
+            when {
+                expression { env.SKIP_PIPELINE != 'true' }
+            }
             steps {
                 dockerBuildPush(
                     user: env.DOCKER_USER,
@@ -114,7 +150,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Docker images built, pushed, and versions committed safely'
+            echo '✅ Pipeline completed successfully'
         }
         failure {
             echo '❌ Pipeline failed'
