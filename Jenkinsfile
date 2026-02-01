@@ -14,6 +14,7 @@ pipeline {
 
     environment {
         DOCKER_USER = 'kshitij2511'
+        COMPOSE_DIR = '/home/ec2-user/hostelhub'
     }
 
     stages {
@@ -32,11 +33,9 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    echo "Commit message: ${msg}"
-
                     if (msg.contains('[skip ci]')) {
-                        currentBuild.description = 'Skipped (CI commit)'
-                        error('CI self-trigger detected — aborting pipeline')
+                        currentBuild.description = 'Skipped CI loop'
+                        error('CI loop detected')
                     }
                 }
             }
@@ -72,39 +71,43 @@ pipeline {
             }
         }
 
-        stage('Build & Push Backend') {
+        stage('Build & Push Images') {
             steps {
-                dockerBuildPush(
-                    user: env.DOCKER_USER,
-                    image: 'hostelhub-backend',
-                    version: "v${readFile('backend.version').trim()}",
-                    dir: 'backend'
-                )
+                script {
+                    def backendVersion = readFile('backend.version').trim()
+                    def frontendVersion = readFile('frontend.version').trim()
+
+                    dockerBuildPush(
+                        user: env.DOCKER_USER,
+                        image: 'hostelhub-backend',
+                        version: "v${backendVersion}",
+                        dir: 'backend'
+                    )
+
+                    dockerBuildPush(
+                        user: env.DOCKER_USER,
+                        image: 'hostelhub-frontend',
+                        version: "v${frontendVersion}",
+                        dir: 'fronted'
+                    )
+                }
             }
         }
 
-        stage('Build & Push Frontend') {
-            steps {
-                dockerBuildPush(
-                    user: env.DOCKER_USER,
-                    image: 'hostelhub-frontend',
-                    version: "v${readFile('frontend.version').trim()}",
-                    dir: 'fronted'
-                )
-            }
-        }
-
-        stage('Deploy to EC2') {
+        stage('Deploy using Docker Compose') {
             steps {
                 sshagent(['ec2-server-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 "
-                        docker pull ${DOCKER_USER}/hostelhub-backend &&
-                        docker pull ${DOCKER_USER}/hostelhub-frontend &&
-                        docker rm -f hostelhub-backend hostelhub-frontend || true &&
-                        docker run -d --name hostelhub-backend -p 3001:3001 ${DOCKER_USER}/hostelhub-backend &&
-                        docker run -d --name hostelhub-frontend -p 3000:80 ${DOCKER_USER}/hostelhub-frontend
-                        "
+                    ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 << EOF
+                        cd ${COMPOSE_DIR}
+
+                        export BACKEND_VERSION=v$(cat backend.version)
+                        export FRONTEND_VERSION=v$(cat frontend.version)
+
+                        docker compose pull
+                        docker compose up -d
+                        docker image prune -f
+                    EOF
                     '''
                 }
             }
@@ -112,11 +115,11 @@ pipeline {
     }
 
     post {
-        aborted {
-            echo '⏭️ Pipeline aborted intentionally (CI loop)'
-        }
         success {
-            echo '✅ CI/CD completed'
+            echo '✅ CI/CD completed successfully'
+        }
+        aborted {
+            echo '⏭️ Pipeline aborted'
         }
     }
 }
