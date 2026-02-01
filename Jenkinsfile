@@ -96,20 +96,36 @@ pipeline {
 
         stage('Deploy using Docker Compose') {
             steps {
-                sshagent(['ec2-server-key']) {
-                    sh """
-ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 << 'EOF'
-set -e
-cd ${COMPOSE_DIR}
+                script {
+                    def backendVersion = readFile('backend.version').trim()
+                    def frontendVersion = readFile('frontend.version').trim()
 
-export BACKEND_VERSION=v${readFile('backend.version').trim()}
-export FRONTEND_VERSION=v${readFile('frontend.version').trim()}
+                    sshagent(['ec2-server-key']) {
+                        sh """
+                        set -e
 
-docker-compose pull
-docker-compose up -d
-docker image prune -f
-EOF
-                    """
+                        # Ensure target directory exists
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 \
+                            'mkdir -p ${COMPOSE_DIR}'
+
+                        # Copy docker-compose.yml from repo
+                        scp -o StrictHostKeyChecking=no docker-compose.yml \
+                            ec2-user@65.1.109.121:${COMPOSE_DIR}/docker-compose.yml
+
+                        # Deploy
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 << EOF
+                            set -e
+                            cd ${COMPOSE_DIR}
+
+                            export BACKEND_VERSION=v${backendVersion}
+                            export FRONTEND_VERSION=v${frontendVersion}
+
+                            docker-compose pull
+                            docker-compose up -d
+                            docker image prune -f
+                        EOF
+                        """
+                    }
                 }
             }
         }
