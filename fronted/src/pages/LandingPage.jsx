@@ -12,7 +12,7 @@ const LandingPage = () => {
           <p>Discover a wide range of hostels and make your booking seamless.</p>
           <div className="hero-buttons">
             <Link to="/student/login" className="btn btn-primary">Student Login</Link>
-            <Link to="/admin/login" className="btn btn-secondary">Hostel Owner Login</Link>
+            <Link to="/admin/login" className="btn btn-secondary">Hostel-Owner Login</Link>
           </div>
         </div>
       </header>
