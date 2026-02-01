@@ -1,12 +1,11 @@
-@Library('hostelhub-lib') _
+@Library('hostelhub-lib@main') _
 
 pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER  = 'kshitij2511'
-        BACKEND_IMAGE   = 'hostelhub-backend'
-        FRONTEND_IMAGE  = 'hostelhub-frontend'
+        DOCKER_USER = 'kshitij2511'
+        GIT_BRANCH  = 'main'
     }
 
     stages {
@@ -19,14 +18,10 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                withCredentials([string(credentialsId: 'docker-pass', variable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u kshitij2511 --password-stdin
+                    '''
                 }
             }
         }
@@ -34,11 +29,55 @@ pipeline {
         stage('Versioning') {
             steps {
                 script {
-                    env.BACKEND_VERSION  = bumpNpmVersion(dir: 'backend')
-                    env.FRONTEND_VERSION = bumpNpmVersion(dir: 'fronted')
+                    sh '''
+                        set -e
 
-                    echo "Backend Version  : ${env.BACKEND_VERSION}"
-                    echo "Frontend Version : ${env.FRONTEND_VERSION}"
+                        echo "📦 Bumping backend version"
+                        cd backend
+                        npm version patch --no-git-tag-version
+                        BACKEND_VERSION=$(node -p "require('./package.json').version")
+                        echo "BACKEND_VERSION=$BACKEND_VERSION" > ../backend.version
+                        cd ..
+
+                        echo "📦 Bumping frontend version"
+                        cd fronted
+                        npm version patch --no-git-tag-version
+                        FRONTEND_VERSION=$(node -p "require('./package.json').version")
+                        echo "FRONTEND_VERSION=$FRONTEND_VERSION" > ../frontend.version
+                        cd ..
+                    '''
+
+                    env.BACKEND_VERSION  = readFile('backend.version').trim()
+                    env.FRONTEND_VERSION = readFile('frontend.version').trim()
+
+                    echo "Backend Version  : v${env.BACKEND_VERSION}"
+                    echo "Frontend Version : v${env.FRONTEND_VERSION}"
+                }
+            }
+        }
+
+        stage('Commit Version Updates') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-cred',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh '''
+                        set -e
+
+                        git config user.name "jenkins-ci"
+                        git config user.email "jenkins@ci.local"
+
+                        git add backend/package.json backend/package-lock.json || true
+                        git add fronted/package.json fronted/package-lock.json || true
+
+                        git diff --cached --quiet && echo "No version changes to commit" && exit 0
+
+                        git commit -m "chore(ci): bump versions [skip ci]"
+
+                        git push https://$GIT_USER:$GIT_PASS@github.com/kshitijx07/Hostelhub.git HEAD:main
+                    '''
                 }
             }
         }
@@ -46,9 +85,9 @@ pipeline {
         stage('Build & Push Backend') {
             steps {
                 dockerBuildPush(
-                    user: DOCKERHUB_USER,
-                    image: BACKEND_IMAGE,
-                    version: env.BACKEND_VERSION,
+                    user: env.DOCKER_USER,
+                    image: 'hostelhub-backend',
+                    version: "v${env.BACKEND_VERSION}",
                     dir: 'backend'
                 )
             }
@@ -57,9 +96,9 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 dockerBuildPush(
-                    user: DOCKERHUB_USER,
-                    image: FRONTEND_IMAGE,
-                    version: env.FRONTEND_VERSION,
+                    user: env.DOCKER_USER,
+                    image: 'hostelhub-frontend',
+                    version: "v${env.FRONTEND_VERSION}",
                     dir: 'fronted'
                 )
             }
@@ -68,10 +107,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Docker images built & pushed with auto versioning"
+            echo '✅ Docker images built, pushed, and versions committed safely'
         }
         failure {
-            echo "❌ Pipeline failed"
+            echo '❌ Pipeline failed'
         }
     }
 }
