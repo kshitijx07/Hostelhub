@@ -95,41 +95,43 @@ pipeline {
         }
 
         stage('Deploy using Docker Compose') {
-    steps {
-        script {
-            def backendVersion = readFile('backend.version').trim()
-            def frontendVersion = readFile('frontend.version').trim()
+            steps {
+                script {
+                    def backendVersion = readFile('backend.version').trim()
+                    def frontendVersion = readFile('frontend.version').trim()
 
-            sshagent(['ec2-server-key']) {
-                sh """
-                set -e
+                    sshagent(['ec2-server-key']) {
+                        sh """
+                        set -e
 
-                ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 '
-                    set -e
-                    mkdir -p ${COMPOSE_DIR}
-                '
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 '
+                            set -e
+                            mkdir -p ${COMPOSE_DIR}
+                        '
 
-                scp -o StrictHostKeyChecking=no docker-compose.yml \
-                    ec2-user@65.1.109.121:${COMPOSE_DIR}/docker-compose.yml
+                        scp -o StrictHostKeyChecking=no docker-compose.yml \
+                            ec2-user@65.1.109.121:${COMPOSE_DIR}/docker-compose.yml
 
-                ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 '
-                    set -e
-                    cd ${COMPOSE_DIR}
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 '
+                            set -e
+                            cd ${COMPOSE_DIR}
 
-                    export BACKEND_VERSION=v${backendVersion}
-                    export FRONTEND_VERSION=v${frontendVersion}
+                            export BACKEND_VERSION=v${backendVersion}
+                            export FRONTEND_VERSION=v${frontendVersion}
 
-                    docker rm -f hostelhub-backend hostelhub-frontend || true
-                    docker-compose down --remove-orphans
-                    docker-compose pull
-                    docker-compose up -d
-                    docker image prune -f
-                '
-                """
+                            docker rm -f hostelhub-backend hostelhub-frontend || true
+                            docker-compose down --remove-orphans
+                            docker-compose pull
+                            docker-compose up -d
+                            docker image prune -f
+                        '
+                        """
+                    }
+                }
             }
         }
-    }
-}
+
+    } // ✅ stages closed properly
 
     post {
         success {
@@ -137,6 +139,9 @@ pipeline {
         }
         aborted {
             echo '⏭️ Pipeline aborted'
+        }
+        failure {
+            echo '❌ CI/CD failed'
         }
     }
 }
