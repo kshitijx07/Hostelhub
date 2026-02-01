@@ -28,14 +28,9 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    echo "Commit author  : ${author}"
-                    echo "Commit message : ${message}"
-
                     if (author == 'jenkins-ci' || message.contains('[skip ci]')) {
-                        echo '🛑 CI guard triggered — aborting pipeline to prevent loop'
-                        currentBuild.description = 'Skipped (CI self-trigger)'
                         currentBuild.result = 'NOT_BUILT'
-                        error('Stopping pipeline execution')
+                        error('CI loop prevention')
                     }
                 }
             }
@@ -50,9 +45,7 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                 }
             }
         }
@@ -61,7 +54,6 @@ pipeline {
             steps {
                 sh '''
                     set -e
-
                     cd backend
                     npm version patch --no-git-tag-version
                     node -p "require('./package.json').version" > ../backend.version
@@ -72,7 +64,6 @@ pipeline {
                     node -p "require('./package.json').version" > ../frontend.version
                     cd ..
                 '''
-
                 script {
                     env.BACKEND_VERSION  = readFile('backend.version').trim()
                     env.FRONTEND_VERSION = readFile('frontend.version').trim()
@@ -92,13 +83,9 @@ pipeline {
                     sh '''
                         git config user.name "jenkins-ci"
                         git config user.email "jenkins@ci.local"
-
                         git add backend/package.json backend/package-lock.json
                         git add fronted/package.json fronted/package-lock.json
-
-                        git diff --cached --quiet && exit 0
-
-                        git commit -m "chore(ci): bump versions [skip ci]"
+                        git commit -m "chore(ci): bump versions [skip ci]" || true
                         git push https://$GIT_USER:$GIT_PASS@github.com/kshitijx07/Hostelhub.git HEAD:main
                     '''
                 }
@@ -126,14 +113,35 @@ pipeline {
                 )
             }
         }
+
+        stage('Deploy to EC2') {
+            steps {
+                script {
+                    def backendImage  = "kshitij2511/hostelhub-backend:v${env.BACKEND_VERSION}"
+                    def frontendImage = "kshitij2511/hostelhub-frontend:v${env.FRONTEND_VERSION}"
+
+                    sshagent(['ec2-server-key']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ec2-user@13.201.9.186 << 'EOF'
+                          docker pull ${backendImage}
+                          docker pull ${frontendImage}
+
+                          docker rm -f hostelhub-backend || true
+                          docker rm -f hostelhub-frontend || true
+
+                          docker run -d --name hostelhub-backend -p 3001:3001 ${backendImage}
+                          docker run -d --name hostelhub-frontend -p 3000:3000 ${frontendImage}
+                        EOF
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {
         success {
             echo '✅ Pipeline completed successfully'
-        }
-        aborted {
-            echo '⏭️ Pipeline aborted (CI loop prevention)'
         }
         failure {
             echo '❌ Pipeline failed'
