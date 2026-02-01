@@ -1,6 +1,6 @@
 {
   "name": "hostel-portal-backend",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Backend for Student-Hostel Portal",
   "main": "server.js",
   "type": "module",
