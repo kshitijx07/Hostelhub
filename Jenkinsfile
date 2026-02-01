@@ -98,7 +98,7 @@ pipeline {
             steps {
                 sshagent(['ec2-server-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@13.201.9.186 "
+                        ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 "
                         docker pull ${DOCKER_USER}/hostelhub-backend &&
                         docker pull ${DOCKER_USER}/hostelhub-frontend &&
                         docker rm -f hostelhub-backend hostelhub-frontend || true &&
