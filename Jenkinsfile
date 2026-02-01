@@ -86,40 +86,4 @@ pipeline {
 
                     dockerBuildPush(
                         user: env.DOCKER_USER,
-                        image: 'hostelhub-frontend',
-                        version: "v${frontendVersion}",
-                        dir: 'fronted'
-                    )
-                }
-            }
-        }
-
-        stage('Deploy using Docker Compose') {
-            steps {
-                sshagent(['ec2-server-key']) {
-                    sh '''
-                    ssh -o StrictHostKeyChecking=no ec2-user@65.1.109.121 << EOF
-                        cd ${COMPOSE_DIR}
-
-                        export BACKEND_VERSION=v$(cat backend.version)
-                        export FRONTEND_VERSION=v$(cat frontend.version)
-
-                        docker compose pull
-                        docker compose up -d
-                        docker image prune -f
-                    EOF
-                    '''
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ CI/CD completed successfully'
-        }
-        aborted {
-            echo '⏭️ Pipeline aborted'
-        }
-    }
-}
+                        image: 'hostelhub-fron
